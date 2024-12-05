@@ -1,5 +1,9 @@
 #include "testLinearProbing.h"
+#include "LinearProbing.h"
+#include "SeparateChaining.h"
 #include "utils.h"
+#include "Employee.h"
+
 using namespace std;
 vector<Employee> addRandomEntries(int numEntries, ProbingHash<Employee> &
 aHashTable)

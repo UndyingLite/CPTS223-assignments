@@ -1,91 +1,125 @@
-#ifndef SEPARATECHAINING_H
-#define SEPARATECHAINING_H
+#ifndef SEPARATE_CHAINING_H
+#define SEPARATE_CHAINING_H
 
 #include <vector>
 #include <list>
+#include <string>
+#include <algorithm>
 #include <functional>
+#include <iostream>
+#include "Employee.h"
+#include "utils.h"
+
+using namespace std;
 
 template <typename HashedObj>
-class ChainingHash {
-public:
-    explicit ChainingHash(int size = 101) : hashTable(size), currentSize(0) {}
+class ChainingHash
+{
+  public:
+    explicit ChainingHash( int size = 101 ) : currentSize( 0 )
+      { theLists.resize( nextPrime(size) ); }
 
-    bool contains(const HashedObj& x) const {
-        auto& whichList = hashTable[myHash(x)];
-        return std::find(whichList.begin(), whichList.end(), x) != whichList.end();
+    bool contains( const HashedObj & x ) const
+    {
+        auto & whichList = theLists[myhash(x)];
+        return find(begin(whichList), end(whichList), x) != end(whichList);
     }
- void makeEmpty() {
-        for (auto& thisList : hashTable) {
+
+    void makeEmpty( )
+    {
+        for (auto & thisList : theLists)
             thisList.clear();
-        }
         currentSize = 0;
     }
 
-    bool insert(const HashedObj& x) {
-        auto& whichList = hashTable[myHash(x)];
-        if (contains(x)) return false;
-        whichList.push_back(x);
+    bool insert( const HashedObj & x )
+    {
+        auto & whichList = theLists[myhash(x)];
+        if (find(begin(whichList), end(whichList), x) != end(whichList))
+            return false;
 
-        if (++currentSize > hashTable.size()) {
+        whichList.push_back(x);
+        ++currentSize;
+
+        if (loadFactor() >= 1.0)
             rehash();
-        }
+
+        return true;
+    }
+    
+    bool insert( HashedObj && x )
+    {
+        auto & whichList = theLists[myhash(x)];
+        if (find(begin(whichList), end(whichList), x) != end(whichList))
+            return false;
+
+        whichList.push_back(std::move(x));
+        ++currentSize;
+
+        if (loadFactor() >= 1.0)
+            rehash();
+
         return true;
     }
 
-    bool insert(HashedObj&& x) {
-        return insert(x);
-    }
-bool remove(const HashedObj& x) {
-        auto& whichList = hashTable[myHash(x)];
-        auto itr = std::find(whichList.begin(), whichList.end(), x);
+    bool remove( const HashedObj & x )
+    {
+        auto & whichList = theLists[myhash(x)];
+        auto itr = find(begin(whichList), end(whichList), x);
 
-        if (itr == whichList.end()) return false;
+        if (itr == end(whichList))
+            return false;
 
         whichList.erase(itr);
         --currentSize;
         return true;
     }
 
-    double loadFactor() const {
-        return static_cast<double>(currentSize) / hashTable.size();
+    double readLoadFactor() const 
+    {
+        return loadFactor();
     }
-private:
-    std::vector<std::list<HashedObj> > hashTable;
+
+    int readCurrentSize() const 
+    {
+        return currentSize;
+    }
+
+    int readArraySize() const 
+    {
+        return theLists.size();
+    }
+
+  private:
+    vector<list<HashedObj> > theLists;   // The array of Lists
     int currentSize;
 
-    void rehash() {
-        std::vector<std::list<HashedObj> > oldHashTable = hashTable;
+    void rehash( )
+    {
+        vector<list<HashedObj> > oldLists = theLists;
 
-        hashTable.resize(nextPrime(2 * hashTable.size()));
-        for (auto& thisList : hashTable) {
+        // Create new double-sized, empty table.
+        theLists.resize(nextPrime(2 * theLists.size()));
+        for (auto & thisList : theLists)
             thisList.clear();
-        }
 
+        // Copy table over.
         currentSize = 0;
-        for (auto& thisList : oldHashTable) {
-            for (auto& x : thisList) {
+        for (auto & thisList : oldLists)
+            for (auto & x : thisList)
                 insert(std::move(x));
-            }
-        }
     }
-        size_t myHash(const HashedObj& x) const {
-        static std::hash<HashedObj> hf;
-        return hf(x) % hashTable.size();
-    }
-static size_t nextPrime(size_t n) {
-    while (!isPrime(n)) ++n;
-    return n;
-}
 
-static bool isPrime(size_t n) {
-    if (n <= 1) return false;
-    if (n <= 3) return true;
-    if (n % 2 == 0 || n % 3 == 0) return false;
-    for (size_t i = 5; i * i <= n; i += 6) {
-        if (n % i == 0 || n % (i + 2) == 0) return false;
+    size_t myhash( const HashedObj & x ) const
+    {
+        static hash<HashedObj> hf;
+        return hf( x ) % theLists.size();
     }
-    return true;
-}
+
+    double loadFactor() const
+    {
+        return static_cast<double>(currentSize) / theLists.size();
+    }
 };
 
-#endif // SEPARATECHAINING_H   
+#endif

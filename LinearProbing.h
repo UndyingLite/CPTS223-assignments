@@ -1,109 +1,156 @@
-#ifndef LINEARPROBING_H
-#define LINEARPROBING_H
+#ifndef LINEAR_PROBING_H
+#define LINEAR_PROBING_H
 
 #include <vector>
+#include <algorithm>
 #include <functional>
-
-#include "utils.h"
+#include <string>
+#include <iostream>
 #include "Employee.h"
+#include "utils.h"
 
-template <typename HashedObj>
-class ProbingHash {
-public:
-    explicit ProbingHash(int size = 101) : hashTable(size), currentSize(0) {}
+using namespace std;
 
-    bool contains(const HashedObj& x) const {
-        return isActive(findPos(x));
+// This implementation follows Figure 5.14 in textbook for quadratic probing
+template <typename HashedObj> 
+class ProbingHash
+{
+  public:
+    explicit ProbingHash( int size = 101 ) : array( nextPrime( size ) ), currentSize( 0 )
+      { makeEmpty( ); }
+
+    bool contains( const HashedObj & x ) const
+    {
+        int currentPos = findPos(x);
+        return isActive(currentPos);
     }
 
-    void makeEmpty() {
-        for (auto& entry : hashTable) {
+    void makeEmpty( )
+    {
+        for (auto & entry : array)
             entry.info = EMPTY;
-        }
         currentSize = 0;
     }
 
-    bool insert(const HashedObj& x) {
+    bool insert( const HashedObj & x )
+    {
         int currentPos = findPos(x);
-        if (isActive(currentPos)) return false;
+        if (isActive(currentPos))
+            return false;
 
-        hashTable[currentPos].element = x;
-        hashTable[currentPos].info = ACTIVE;
+        array[currentPos].element = x;
+        array[currentPos].info = ACTIVE;
+        ++currentSize;
 
-        if (++currentSize > hashTable.size() / 2) {
+        if (loadFactor() >= 0.5)
             rehash();
-        }
+
         return true;
     }
-
-    bool insert(HashedObj&& x) {
-        return insert(x);
-    }
-
-    bool remove(const HashedObj& x) {
+    
+    bool insert( HashedObj && x )
+    {
         int currentPos = findPos(x);
-        if (!isActive(currentPos)) return false;
+        if (isActive(currentPos))
+            return false;
 
-        hashTable[currentPos].info = DELETED;
+        array[currentPos] = std::move(HashEntry(std::move(x), ACTIVE));
+        ++currentSize;
+
+        if (loadFactor() >= 0.5)
+            rehash();
+
         return true;
     }
 
-    double loadFactor() const {
-        return static_cast<double>(currentSize) / hashTable.size();
+    bool remove( const HashedObj & x )
+    {
+        int currentPos = findPos(x);
+        if (!isActive(currentPos))
+            return false;
+
+        array[currentPos].info = DELETED;
+        --currentSize;
+        return true;
     }
 
-private:
+    // New Methods to Add
+    double readLoadFactor() const
+    {
+        return loadFactor();
+    }
+
+    int readCurrentSize() const
+    {
+        return currentSize;
+    }
+
+    int readArraySize() const
+    {
+        return array.size();
+    }
+
     enum EntryType { ACTIVE, EMPTY, DELETED };
 
-    struct HashEntry {
+  private:
+    struct HashEntry
+    {
         HashedObj element;
         EntryType info;
 
-        HashEntry(const HashedObj& e = HashedObj(), EntryType i = EMPTY)
-            : element(e), info(i) {}
+        HashEntry( const HashedObj & e = HashedObj(), EntryType i = EMPTY )
+          : element(e), info(i) { }
+        
+        HashEntry( HashedObj && e, EntryType i = EMPTY )
+          : element(std::move(e)), info(i) { }
     };
-
-    std::vector<HashEntry> hashTable;
+    
+    vector<HashEntry> array;
     int currentSize;
 
-    bool isActive(int currentPos) const {
-        return hashTable[currentPos].info == ACTIVE;
-    }
+    bool isActive( int currentPos ) const
+      { return array[ currentPos ].info == ACTIVE; }
 
-    int findPos(const HashedObj& x) const {
+    int findPos( const HashedObj & x ) const
+    {
         int offset = 1;
-        int currentPos = myHash(x);
+        int currentPos = myhash(x);
 
-        while (hashTable[currentPos].info != EMPTY && hashTable[currentPos].element != x) {
-            currentPos += offset;
-            offset += 2;
-            if (currentPos >= hashTable.size()) {
-                currentPos -= hashTable.size();
-            }
+        while (array[currentPos].info != EMPTY && array[currentPos].element != x)
+        {
+            currentPos += offset;  // Linear probing
+            if (currentPos >= array.size())
+                currentPos -= array.size();
         }
         return currentPos;
     }
 
-    void rehash() {
-        std::vector<HashEntry> oldHashTable = hashTable;
+    void rehash( )
+    {
+        vector<HashEntry> oldArray = array;
 
-        hashTable.resize(nextPrime(2 * hashTable.size()));
-        for (auto& entry : hashTable) {
+        // Create new double-sized, empty table.
+        array.resize(nextPrime(2 * oldArray.size()));
+        for (auto & entry : array)
             entry.info = EMPTY;
-        }
 
+        // Copy table over.
         currentSize = 0;
-        for (auto& entry : oldHashTable) {
-            if (entry.info == ACTIVE) {
+        for (auto & entry : oldArray)
+            if (entry.info == ACTIVE)
                 insert(std::move(entry.element));
-            }
-        }
     }
 
-    size_t myHash(const HashedObj& x) const {
-        static std::hash<HashedObj> hf;
-        return hf(x) % hashTable.size();
+    size_t myhash( const HashedObj & x ) const
+    {
+        static hash<HashedObj> hf;
+        return hf( x ) % array.size( );
+    }
+
+    double loadFactor() const
+    {
+        return static_cast<double>(currentSize) / array.size();
     }
 };
 
-#endif // LINEARPROBING_H
+#endif

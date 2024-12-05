@@ -5,7 +5,7 @@
 
 using namespace std;
 
-vector<Employee> addRandomEntries(int numEntries, ProbingHash<Employee> & aHashTable);
+vector<Employee>  addRandomEntries(int numEntries, ProbingHash<Employee> & aHashTable);
 void searchEachEntryOnce(vector<Employee> aVector, ProbingHash<Employee> & aHashTable);
 void initializeHash(ProbingHash<Employee> & aHashTable);
 void testInsertToHash(ProbingHash<Employee> & aHashTable);
